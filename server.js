@@ -8,6 +8,7 @@ const app = express();
 // Middleware (Allows JSON data and Cross-Origin requests)
 app.use(express.json());
 app.use(cors());
+app.use(express.static(__dirname));
 
 // 1. Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -32,6 +33,37 @@ app.get('/', (req, res) => {
 
 // 4. Start the Server
 const PORT = 5000;
+
+// 5. Create a Route to Save a Report
+app.post('/api/reports', async (req, res) => {
+  try {
+    // Get data from the "body" of the request
+    const { type, lat, lng, description } = req.body;
+
+    // Create a new Report in memory
+    const newReport = new Report({ type, lat, lng, description });
+
+    // Save it to the database
+    await newReport.save();
+
+    res.status(201).json({ message: "Report saved successfully!", report: newReport });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to save report" });
+  }
+});
+
+// 6. Create a Route to Get All Reports (So we can see them later)
+app.get('/api/reports', async (req, res) => {
+  try {
+    const reports = await Report.find(); // Get all from DB
+    res.json(reports);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch reports" });
+  }
+});
+
+
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
