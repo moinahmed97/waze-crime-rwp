@@ -2,13 +2,16 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 
 // Middleware (Allows JSON data and Cross-Origin requests)
 app.use(express.json());
 app.use(cors());
-app.use(express.static(__dirname));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // 1. Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
