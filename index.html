@@ -7,31 +7,111 @@
    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
      
     <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { height: 100vh; width: 100%; }
-        body { margin: 0; padding: 0; }
+
+        /* The hidden form */
+        #report-form {
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            z-index: 1000; /* Sit on top of the map */
+            border-radius: 8px;
+            width: 300px;
+        }
+        input, select, textarea { width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; cursor: pointer; }
+        button:hover { background: #c0392b; }
+        .close-btn { background: #ccc; margin-top: 5px; color: black; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
+    <div id="report-form">
+        <h3>Report Incident</h3>
+        <select id="crime-type">
+            <option value="Robbery">Robbery</option>
+            <option value="Harassment">Harassment</option>
+            <option value="Accident">Traffic Accident</option>
+            <option value="Other">Other</option>
+            <option value="Kidnapping">Kidnapping</option>
+        </select>
+        <textarea id="description" placeholder="Describe what happened..."></textarea>
+        
+        <input type="hidden" id="lat">
+        <input type="hidden" id="lng">
 
+        <button onclick="submitReport()">Submit Report</button>
+        <button class="close-btn" onclick="closeForm()">Cancel</button>
+    </div>
+  
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
 
-    <script>
-        // 1. Initialize the map centered on Rawalpindi (Lat: 33.5651, Lng: 73.0169)
+<script>
+        // 1. Initialize Map
         var map = L.map('map').setView([33.5651, 73.0169], 13);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-        // 2. Add the "tile layer" (the actual map images) from OpenStreetMap
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map);
+        // 2. Handle Map Clicks
+        map.on('click', function(e) {
+            // e.latlng contains the coordinates of where you clicked
+            document.getElementById('lat').value = e.latlng.lat;
+            document.getElementById('lng').value = e.latlng.lng;
+            
+            // Show the form
+            document.getElementById('report-form').style.display = 'block';
+        });
 
-        // 3. Add a marker just to prove it works
-        var marker = L.marker([33.5651, 73.0169]).addTo(map);
-        marker.bindPopup("<b>Hello World!</b><br>I am ready to code.").openPopup();
+        // 3. Submit Data to Backend
+        function submitReport() {
+            const type = document.getElementById('crime-type').value;
+            const description = document.getElementById('description').value;
+            const lat = document.getElementById('lat').value;
+            const lng = document.getElementById('lng').value;
+
+            // The "Fetch" command you used in the console, now automatic
+            fetch('/api/reports', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, description, lat, lng })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("Report Saved!");
+                
+                // Add the new pin to the map immediately
+                L.marker([lat, lng]).addTo(map)
+                    .bindPopup(`<b>${type}</b><br>${description}`)
+                    .openPopup();
+                
+                closeForm();
+            })
+            .catch(err => alert("Error saving report!"));
+        }
+
+        // 4. Helper to hide form
+        function closeForm() {
+            document.getElementById('report-form').style.display = 'none';
+            document.getElementById('description').value = ''; // Clear text
+        }
+
+        // 5. Load Existing Reports (So they don't disappear on refresh)
+        fetch('/api/reports')
+            .then(res => res.json())
+            .then(reports => {
+                reports.forEach(report => {
+                    L.marker([report.lat, report.lng]).addTo(map)
+                        .bindPopup(`<b>${report.type}</b><br>${report.description}`);
+                });
+            });
     </script>
 </body>
 </html>

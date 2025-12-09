@@ -26,10 +26,6 @@ const ReportSchema = new mongoose.Schema({
 
 const Report = mongoose.model('Report', ReportSchema);
 
-// 3. Simple Test Route
-app.get('/', (req, res) => {
-  res.send('Safe Routes Backend is Running!');
-});
 
 // 4. Start the Server
 const PORT = 5000;
