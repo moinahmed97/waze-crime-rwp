@@ -4,114 +4,134 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Safe Routes Rawalpindi</title>
-   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
      
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { height: 100vh; width: 100%; }
 
-        /* The hidden form */
-        #report-form {
+        /* Form Styles */
+        .form-popup {
             display: none; /* Hidden by default */
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
             background: white;
             padding: 20px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
-            z-index: 1000; /* Sit on top of the map */
             border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 1000;
             width: 300px;
         }
-        input, select, textarea { width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; cursor: pointer; }
-        button:hover { background: #c0392b; }
-        .close-btn { background: #ccc; margin-top: 5px; color: black; }
+        .form-popup select, .form-popup input, .form-popup button {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .form-popup button {
+            background-color: #ff4444; 
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .form-popup button:hover { background-color: #cc0000; }
+        .close-btn { background-color: #ccc !important; color: black !important; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div id="report-form">
+
+    <div class="form-popup" id="reportForm">
         <h3>Report Incident</h3>
-        <select id="crime-type">
+        <select id="crimeType">
             <option value="Robbery">Robbery</option>
             <option value="Harassment">Harassment</option>
-            <option value="Accident">Traffic Accident</option>
-            <option value="Other">Other</option>
-            <option value="Kidnapping">Kidnapping</option>
+            <option value="Accident">Accident</option>
+            <option value="Unsafe Area">Unsafe Area</option>
         </select>
-        <textarea id="description" placeholder="Describe what happened..."></textarea>
+        <input type="text" id="description" placeholder="Description (e.g. 2 guys on bike)">
+        <input type="hidden" id="clickedLat">
+        <input type="hidden" id="clickedLng">
         
-        <input type="hidden" id="lat">
-        <input type="hidden" id="lng">
-
         <button onclick="submitReport()">Submit Report</button>
         <button class="close-btn" onclick="closeForm()">Cancel</button>
     </div>
-  
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
 
-<script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
         // 1. Initialize Map
         var map = L.map('map').setView([33.5651, 73.0169], 13);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-        // 2. Handle Map Clicks
+        // --- COLOR LOGIC ---
+        function getColor(type) {
+            if (type === 'Robbery') return '#ff0000';    // Red
+            if (type === 'Harassment') return '#ff8800'; // Orange
+            if (type === 'Accident') return '#ffff00';   // Yellow
+            return '#808080';                            // Grey
+        }
+
+        // --- MARKER LOGIC ---
+        function addMarkerToMap(report) {
+            L.circleMarker([report.lat, report.lng], {
+                color: 'white',
+                weight: 2,
+                fillColor: getColor(report.type),
+                fillOpacity: 0.8,
+                radius: 12
+            })
+            .addTo(map)
+            .bindPopup(`<b>${report.type}</b><br>${report.description}`);
+        }
+
+        // 2. Load Existing Reports
+        fetch('/api/reports')
+            .then(res => res.json())
+            .then(reports => {
+                reports.forEach(report => {
+                    addMarkerToMap(report);
+                });
+            })
+            .catch(err => console.error("Error loading reports:", err));
+
+        // 3. Handle Map Click
         map.on('click', function(e) {
-            // e.latlng contains the coordinates of where you clicked
-            document.getElementById('lat').value = e.latlng.lat;
-            document.getElementById('lng').value = e.latlng.lng;
-            
-            // Show the form
-            document.getElementById('report-form').style.display = 'block';
+            // Fill hidden inputs
+            document.getElementById('clickedLat').value = e.latlng.lat;
+            document.getElementById('clickedLng').value = e.latlng.lng;
+            // Show Form
+            document.getElementById('reportForm').style.display = 'block';
         });
 
-        // 3. Submit Data to Backend
-        function submitReport() {
-            const type = document.getElementById('crime-type').value;
-            const description = document.getElementById('description').value;
-            const lat = document.getElementById('lat').value;
-            const lng = document.getElementById('lng').value;
+        // 4. Close Form
+        function closeForm() {
+            document.getElementById('reportForm').style.display = 'none';
+        }
 
-            // The "Fetch" command you used in the console, now automatic
+        // 5. Submit Report
+        function submitReport() {
+            const type = document.getElementById('crimeType').value;
+            const description = document.getElementById('description').value;
+            const lat = document.getElementById('clickedLat').value;
+            const lng = document.getElementById('clickedLng').value;
+
             fetch('/api/reports', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type, description, lat, lng })
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
-                alert("Report Saved!");
-                
-                // Add the new pin to the map immediately
-                L.marker([lat, lng]).addTo(map)
-                    .bindPopup(`<b>${type}</b><br>${description}`)
-                    .openPopup();
-                
+                addMarkerToMap({ type, description, lat, lng });
+                alert('Report Saved!');
                 closeForm();
             })
-            .catch(err => alert("Error saving report!"));
+            .catch(err => alert('Error saving report'));
         }
-
-        // 4. Helper to hide form
-        function closeForm() {
-            document.getElementById('report-form').style.display = 'none';
-            document.getElementById('description').value = ''; // Clear text
-        }
-
-        // 5. Load Existing Reports (So they don't disappear on refresh)
-        fetch('/api/reports')
-            .then(res => res.json())
-            .then(reports => {
-                reports.forEach(report => {
-                    L.marker([report.lat, report.lng]).addTo(map)
-                        .bindPopup(`<b>${report.type}</b><br>${report.description}`);
-                });
-            });
     </script>
 </body>
 </html>
