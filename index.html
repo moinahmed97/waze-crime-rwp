@@ -59,7 +59,43 @@
         }
         .form-popup button:hover { background-color: #cc0000; }
         .close-btn { background-color: #ccc !important; color: black !important; }
+        /* --- DARK MODE UI OVERRIDES --- */
         
+        /* Dark background for the Form and Filter Bar */
+        .form-popup, .filter-bar {
+            background-color: #1a1a1a !important; /* Almost Black */
+            color: #ffffff !important;            /* White Text */
+            border: 1px solid #444;               /* Subtle Grey Border */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8); /* Stronger Shadow */
+        }
+
+        /* Dark buttons */
+        .filter-btn {
+            background-color: #333 !important;
+            color: #ccc !important;
+            border: 1px solid #555 !important;
+        }
+        
+        /* Active button gets a special color (e.g., Blue or Red) */
+        .filter-btn.active {
+            background-color: #5c2b2b !important; /* Dark Red tint */
+            color: white !important;
+            border-color: #ff4444 !important;
+        }
+
+        /* Inputs inside the form */
+        .form-popup input, .form-popup select {
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+        
+        /* GPS Button */
+        button[title="Show My Location"] {
+            background-color: #1a1a1a !important;
+            color: white !important;
+            border: 1px solid #444 !important;
+        }
     </style>
 </head>
 <body>
@@ -112,7 +148,11 @@
     <script>
         // 1. Initialize Map
         var map = L.map('map').setView([33.5651, 73.0169], 13);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
 
         // --- NEW: Create a Layer Group (The "Sheet" we can wipe clean) ---
         var markersLayer = L.layerGroup().addTo(map);
