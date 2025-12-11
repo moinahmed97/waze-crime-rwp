@@ -7,6 +7,27 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
      
     <style>
+        /* Filter Bar Styles */
+        .filter-bar {
+            position: absolute;
+            top: 20px;
+            left: 50px; /* Right next to zoom controls */
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .filter-btn {
+            padding: 5px 10px;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .filter-btn:hover { background: #e0e0e0; }
+        .filter-btn.active { background: #333; color: white; }
         body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { height: 100vh; width: 100%; }
 
@@ -41,7 +62,15 @@
     </style>
 </head>
 <body>
-
+<div class="filter-bar">
+        <strong>Filter: </strong>
+        <button class="filter-btn active" onclick="filterMap('All')">All</button>
+        <button class="filter-btn" onclick="filterMap('Robbery')">Robbery</button>
+        <button class="filter-btn" onclick="filterMap('Harassment')">Harassment</button>
+        <button class="filter-btn" onclick="filterMap('Accident')">Accident</button>
+         <button class="filter-btn" onclick="filterMap('Unsafe Area')">Unsafe Area</button>
+        
+    </div>
     <div id="map"></div>
 
     <div class="form-popup" id="reportForm">
@@ -67,52 +96,81 @@
         var map = L.map('map').setView([33.5651, 73.0169], 13);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-        // --- COLOR LOGIC ---
+        // --- NEW: Create a Layer Group (The "Sheet" we can wipe clean) ---
+        var markersLayer = L.layerGroup().addTo(map);
+        
+        // --- NEW: Global variable to store all data ---
+        var allReports = [];
+
+        // Helper: Pick Color (Including your PURPLE update!)
         function getColor(type) {
-            if (type === 'Robbery') return '#ff0000';    // Red
+            if (type === 'Robbery') return 'purple';     // <--- Your Custom Color
             if (type === 'Harassment') return '#ff8800'; // Orange
             if (type === 'Accident') return '#ffff00';   // Yellow
             return '#808080';                            // Grey
         }
 
-        // --- MARKER LOGIC ---
+        // Helper: Add Marker to the Layer
         function addMarkerToMap(report) {
-            L.circleMarker([report.lat, report.lng], {
+            let dateString = "Time Unknown";
+            if (report.date) {
+                dateString = new Date(report.date).toLocaleString();
+            }
+
+            const marker = L.circleMarker([report.lat, report.lng], {
                 color: 'white',
                 weight: 2,
                 fillColor: getColor(report.type),
                 fillOpacity: 0.8,
-                radius: 12
-            })
-            .addTo(map)
-            .bindPopup(`<b>${report.type}</b><br>${report.description}`);
+                radius: 10
+            });
+
+            // Bind the popup
+            marker.bindPopup(`
+                <div style="font-family: sans-serif;">
+                    <strong style="color:${getColor(report.type)}">${report.type}</strong><br>
+                    <small>${dateString}</small><hr>
+                    ${report.description}
+                </div>
+            `);
+
+            // IMPORTANT: Add to the LAYER, not the map directly
+            markersLayer.addLayer(marker);
         }
 
-        // 2. Load Existing Reports
+        // 2. Load Reports & Save to Memory
         fetch('/api/reports')
             .then(res => res.json())
             .then(reports => {
-                reports.forEach(report => {
-                    addMarkerToMap(report);
-                });
-            })
-            .catch(err => console.error("Error loading reports:", err));
+                allReports = reports; // Save data to global variable
+                filterMap('All');     // Show everything initially
+            });
 
-        // 3. Handle Map Click
+        // --- NEW: The Filter Function ---
+        function filterMap(category) {
+            // 1. Clear the map
+            markersLayer.clearLayers();
+
+            // 2. Loop through data and decide what to show
+            allReports.forEach(report => {
+                if (category === 'All' || report.type === category) {
+                    addMarkerToMap(report);
+                }
+            });
+        }
+
+        // 3. Map Click -> Show Form
         map.on('click', function(e) {
-            // Fill hidden inputs
             document.getElementById('clickedLat').value = e.latlng.lat;
             document.getElementById('clickedLng').value = e.latlng.lng;
-            // Show Form
             document.getElementById('reportForm').style.display = 'block';
         });
 
-        // 4. Close Form
+        // 4. Form Functions
         function closeForm() {
             document.getElementById('reportForm').style.display = 'none';
         }
 
-        // 5. Submit Report
         function submitReport() {
             const type = document.getElementById('crimeType').value;
             const description = document.getElementById('description').value;
@@ -126,11 +184,14 @@
             })
             .then(res => res.json())
             .then(data => {
-                addMarkerToMap({ type, description, lat, lng });
-                alert('Report Saved!');
+                // Add to our global list
+                allReports.push(data.report); 
+                // Refresh the map view
+                filterMap('All');
+                
+                alert('Saved!');
                 closeForm();
-            })
-            .catch(err => alert('Error saving report'));
+            });
         }
     </script>
 </body>
