@@ -59,9 +59,26 @@
         }
         .form-popup button:hover { background-color: #cc0000; }
         .close-btn { background-color: #ccc !important; color: black !important; }
+        
     </style>
 </head>
 <body>
+     <button onclick="locateUser()" style="
+        position: absolute;
+        top: 80px; /* Below the filter bar */
+        left: 50px;
+        z-index: 1000;
+        background: white;
+        border: none;
+        padding: 10px;
+        border-radius: 50%; /* Make it a circle */
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        cursor: pointer;
+        font-size: 18px;
+    " title="Show My Location">
+        📍
+    </button>
+
 <div class="filter-bar">
         <strong>Filter: </strong>
         <button class="filter-btn active" onclick="filterMap('All')">All</button>
@@ -69,6 +86,7 @@
         <button class="filter-btn" onclick="filterMap('Harassment')">Harassment</button>
         <button class="filter-btn" onclick="filterMap('Accident')">Accident</button>
          <button class="filter-btn" onclick="filterMap('Unsafe Area')">Unsafe Area</button>
+        
         
     </div>
     <div id="map"></div>
@@ -104,7 +122,7 @@
 
         // Helper: Pick Color (Including your PURPLE update!)
         function getColor(type) {
-            if (type === 'Robbery') return 'purple';     // <--- Your Custom Color
+            if (type === 'Robbery') return 'red';     // <--- Your Custom Color
             if (type === 'Harassment') return '#ff8800'; // Orange
             if (type === 'Accident') return '#ffff00';   // Yellow
             return '#808080';                            // Grey
@@ -192,6 +210,43 @@
                 alert('Saved!');
                 closeForm();
             });
+        }
+        // --- NEW: Locate User Function ---
+        function locateUser() {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser");
+                return;
+            }
+
+            // Options to force GPS hardware use
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            };
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    // Fly to location
+                    map.flyTo([lat, lng], 18); // Zoom level 18 is street view
+
+                    // Add blue dot
+                    L.circleMarker([lat, lng], {
+                        color: 'white',
+                        fillColor: '#4285F4',
+                        fillOpacity: 1,
+                        radius: 8
+                    }).addTo(map).bindPopup("You are here").openPopup();
+                },
+                (error) => {
+                    console.error(error);
+                    alert("Error getting location: " + error.message);
+                },
+                options // <--- This forces high accuracy
+            );
         }
     </script>
 </body>
