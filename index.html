@@ -212,40 +212,49 @@
             });
         }
         // --- NEW: Locate User Function ---
-        function locateUser() {
+      function locateUser() {
+            // 1. Check if browser supports Geolocation
             if (!navigator.geolocation) {
                 alert("Geolocation is not supported by your browser");
                 return;
             }
 
-            // Options to force GPS hardware use
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 5000,
-                maximumAge: 0
-            };
-
+            // 2. Ask for location with High Accuracy settings
             navigator.geolocation.getCurrentPosition(
                 (position) => {
+                    // Success! We got a coordinate (even if slightly off)
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
 
-                    // Fly to location
-                    map.flyTo([lat, lng], 18); // Zoom level 18 is street view
+                    // 3. Move map to that area
+                    map.flyTo([lat, lng], 16);
 
-                    // Add blue dot
-                    L.circleMarker([lat, lng], {
-                        color: 'white',
-                        fillColor: '#4285F4',
-                        fillOpacity: 1,
-                        radius: 8
-                    }).addTo(map).bindPopup("You are here").openPopup();
+                    // 4. Create a Marker you can DRAG
+                    const userMarker = L.marker([lat, lng], {
+                        draggable: true, // <--- This allows you to move it
+                        title: "Drag to correct location"
+                    }).addTo(map);
+
+                    userMarker.bindPopup("<b>You are here</b><br>Drag me to your exact spot.").openPopup();
+
+                    // 5. When you drop the pin, save the NEW coordinates
+                    userMarker.on('dragend', function(event) {
+                        var marker = event.target;
+                        var position = marker.getLatLng();
+                        
+                        // Update the hidden form fields
+                        document.getElementById('clickedLat').value = position.lat;
+                        document.getElementById('clickedLng').value = position.lng;
+                        
+                        // Show the form automatically
+                        document.getElementById('reportForm').style.display = 'block';
+                    });
                 },
                 (error) => {
-                    console.error(error);
-                    alert("Error getting location: " + error.message);
+                    // Failure (User denied permission or hardware error)
+                    alert("Could not get location. Ensure you are using the HTTPS link.");
                 },
-                options // <--- This forces high accuracy
+                { enableHighAccuracy: true }
             );
         }
     </script>
