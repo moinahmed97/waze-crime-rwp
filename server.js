@@ -61,7 +61,10 @@ app.get('/api/reports', async (req, res) => {
   }
 });
 
-
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'Server is running smoothly' });
+});
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
